@@ -1,4 +1,3 @@
-// 매트릭스 데이터 정의
 let keys = [
     ['A', 'B', 'C', 'D', 'E', 'F'],
     ['G', 'H', 'I', 'J', 'K', 'L'],
@@ -13,27 +12,21 @@ let targetSentence = "HELLO WORLD"; // 타겟 문장 (고정)
 let currentTargetIndex = 0; // 현재 타겟 문자의 인덱스
 let flashCount = 0; // 깜빡임 횟수
 let isRowFlash = true; // 행과 열 번갈아 깜빡임을 위한 플래그
+let eventMarkers = []; // 이벤트 데이터를 저장할 배열
 
 // 행 또는 열 강조 효과 구현
 function highlightRow(rowIndex) {
     const rowElements = document.querySelectorAll(`.row-${rowIndex}`);
     rowElements.forEach(element => {
         element.classList.add('highlight');
-        element.style.transition = "all 0.125s"; // 부드러운 전환 효과 추가
-        element.style.color = "#fff"; // 강조된 글자 색상 변경
-        element.style.fontWeight = "bold"; // 폰트 굵게 설정
-        element.style.textShadow = "0px 0px 10px #fff"; // 밝은 효과 추가
     });
+    recordEvent(`Row-${rowIndex}`, Date.now());
 }
 
 function unhighlightRow(rowIndex) {
     const rowElements = document.querySelectorAll(`.row-${rowIndex}`);
     rowElements.forEach(element => {
         element.classList.remove('highlight');
-        element.style.transition = "all 0.125s"; // 부드러운 전환 효과 추가
-        element.style.color = "#666"; // 기본 색상 복원
-        element.style.fontWeight = "normal"; // 폰트 굵기 복원
-        element.style.textShadow = "none"; // 밝은 효과 제거
     });
 }
 
@@ -41,22 +34,20 @@ function highlightCol(colIndex) {
     const colElements = document.querySelectorAll(`.col-${colIndex}`);
     colElements.forEach(element => {
         element.classList.add('highlight');
-        element.style.transition = "all 0.125s";
-        element.style.color = "#fff";
-        element.style.fontWeight = "bold";
-        element.style.textShadow = "0px 0px 10px #fff";
     });
+    recordEvent(`Col-${colIndex}`, Date.now());
 }
 
 function unhighlightCol(colIndex) {
     const colElements = document.querySelectorAll(`.col-${colIndex}`);
     colElements.forEach(element => {
         element.classList.remove('highlight');
-        element.style.transition = "all 0.125s";
-        element.style.color = "#666";
-        element.style.fontWeight = "normal";
-        element.style.textShadow = "none";
     });
+}
+
+// 이벤트 기록
+function recordEvent(marker, timestamp) {
+    eventMarkers.push({ marker, timestamp });
 }
 
 // 매트릭스 요소 생성 및 추가
@@ -94,11 +85,13 @@ function flash() {
         if (currentTargetIndex < targetSentence.length) {
             selectedText += targetSentence[currentTargetIndex];
             document.getElementById('selected-text').textContent = `RESULT: ${selectedText}`;
+            recordEvent(`Selected-${targetSentence[currentTargetIndex]}`, Date.now());
             currentTargetIndex++;
         }
 
         if (currentTargetIndex >= targetSentence.length) {
             clearInterval(flashInterval); // 모든 알파벳 선택 완료 시 반복 종료
+            saveData(); // 데이터 저장
             return;
         }
     }
@@ -108,3 +101,18 @@ const flashInterval = setInterval(flash, 250); // 250ms 간격으로 반복
 
 // 타겟 문장 표시
 document.getElementById('target-sentence').textContent = `TARGET: ${targetSentence}`;
+
+// CSV 파일 저장 기능 추가
+function saveData() {
+    let csvContent = "data:text/csv;charset=utf-8,Marker,Timestamp\n";
+    eventMarkers.forEach(event => {
+        csvContent += `${event.marker},${event.timestamp}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "event_markers.csv");
+    document.body.appendChild(link); // 필요 시 링크를 DOM에 추가
+    link.click(); // 다운로드 실행
+}
