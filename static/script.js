@@ -8,11 +8,14 @@ let keys = [
 ];
 
 let selectedText = ""; // RESULT 문장에 표시될 선택된 텍스트
-let targetSentence = "HELLO WORLD"; // 타겟 문장 (고정)
+let targetSentences = ["THE QUICK BROWN FOX", "JUMP OVER LAZY DOGS", "HELLO WORLD", "SEJONG DATA VISUALIZATION LABORATORY"]; // 타겟 문장들
+let currentSentenceIndex = 0; // 현재 문장의 인덱스
 let currentTargetIndex = 0; // 현재 타겟 문자의 인덱스
 let flashCount = 0; // 깜빡임 횟수
 let isRowFlash = true; // 행과 열 번갈아 깜빡임을 위한 플래그
 let eventMarkers = []; // 이벤트 데이터를 저장할 배열
+let currentAlphabet = ""; // 현재 응시하고 있는 알파벳
+let currentAlphabetStartTime = 0; // 현재 알파벳을 바라보기 시작한 시간
 
 // 행 또는 열 강조 효과 구현
 function highlightRow(rowIndex) {
@@ -79,28 +82,49 @@ function flash() {
 
     flashCount++;
 
+    if (flashCount === 1) {
+        // 첫 번째 깜빡임에서 알파벳을 응시하기 시작할 때 기록
+        currentAlphabet = targetSentences[currentSentenceIndex][currentTargetIndex]; // 응시할 알파벳 설정
+        currentAlphabetStartTime = Date.now(); // 응시 시작 시간 기록
+        recordEvent(`Started viewing ${currentAlphabet}`, currentAlphabetStartTime);
+    }
+
     if (flashCount >= 15) { // 행과 열이 총 15번 깜빡이면 다음 알파벳으로 이동
+        const endTime = Date.now(); // 알파벳 응시 종료 시간 기록
+        recordEvent(`Finished viewing ${currentAlphabet}`, endTime);
+        
         flashCount = 0;
 
-        if (currentTargetIndex < targetSentence.length) {
-            selectedText += targetSentence[currentTargetIndex];
+        if (currentTargetIndex < targetSentences[currentSentenceIndex].length) {
+            selectedText += targetSentences[currentSentenceIndex][currentTargetIndex];
             document.getElementById('selected-text').textContent = `RESULT: ${selectedText}`;
-            recordEvent(`Selected-${targetSentence[currentTargetIndex]}`, Date.now());
+            recordEvent(`Selected-${targetSentences[currentSentenceIndex][currentTargetIndex]}`, endTime);
             currentTargetIndex++;
         }
 
-        if (currentTargetIndex >= targetSentence.length) {
-            clearInterval(flashInterval); // 모든 알파벳 선택 완료 시 반복 종료
-            saveData(); // 데이터 저장
-            return;
+        if (currentTargetIndex >= targetSentences[currentSentenceIndex].length) { // 한 문장이 끝났을 때
+            currentSentenceIndex++; // 다음 문장으로 이동
+            if (currentSentenceIndex >= targetSentences.length) { // 모든 문장이 끝났을 때
+                clearInterval(flashInterval); // 반복 종료
+                saveData(); // 데이터 저장
+                return;
+            }
+            // 일정 시간 기다린 후 다음 문장으로 넘어가도록 설정 (1초 대기)
+            setTimeout(() => {
+                currentTargetIndex = 0; // 타겟 인덱스 초기화
+                selectedText = ""; // 선택된 텍스트 초기화
+                document.getElementById('selected-text').textContent = `RESULT: ${selectedText}`; // 결과 표시 초기화
+                flashCount = 0; // 깜빡임 횟수 초기화
+                document.getElementById('target-sentence').textContent = `TARGET: ${targetSentences[currentSentenceIndex]}`; // 새로운 문장 표시
+            }, 1000); // 1초 대기
         }
     }
 }
 
 const flashInterval = setInterval(flash, 250); // 250ms 간격으로 반복
 
-// 타겟 문장 표시
-document.getElementById('target-sentence').textContent = `TARGET: ${targetSentence}`;
+// 첫 번째 문장 표시
+document.getElementById('target-sentence').textContent = `TARGET: ${targetSentences[currentSentenceIndex]}`;
 
 // CSV 파일 저장 기능 추가
 function saveData() {
